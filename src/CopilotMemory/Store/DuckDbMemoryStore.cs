@@ -9,7 +9,7 @@ namespace CopilotMemory.Store;
 public sealed class DuckDbMemoryStore : IDisposable
 {
     private readonly DuckDBConnection _connection;
-    private readonly object _writeLock = new();
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
 
     /// <summary>
     /// Creates a new DuckDB memory store at the specified path.
@@ -43,9 +43,10 @@ public sealed class DuckDbMemoryStore : IDisposable
     /// Adds a new memory entry to the store.
     /// </summary>
     /// <param name="entry">Memory entry to add.</param>
-    public void Add(MemoryEntry entry)
+    public async Task AddAsync(MemoryEntry entry)
     {
-        lock (_writeLock)
+        await _writeLock.WaitAsync();
+        try
         {
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = """
@@ -61,6 +62,7 @@ public sealed class DuckDbMemoryStore : IDisposable
             cmd.Parameters.Add(new DuckDBParameter { Value = (object?)entry.SessionId ?? DBNull.Value });
             cmd.ExecuteNonQuery();
         }
+        finally { _writeLock.Release(); }
     }
 
     /// <summary>
@@ -69,9 +71,10 @@ public sealed class DuckDbMemoryStore : IDisposable
     /// <param name="id">ID of the memory to update.</param>
     /// <param name="newText">New text content.</param>
     /// <param name="newEmbedding">New embedding vector.</param>
-    public void Update(string id, string newText, float[] newEmbedding)
+    public async Task UpdateAsync(string id, string newText, float[] newEmbedding)
     {
-        lock (_writeLock)
+        await _writeLock.WaitAsync();
+        try
         {
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = """
@@ -84,21 +87,24 @@ public sealed class DuckDbMemoryStore : IDisposable
             cmd.Parameters.Add(new DuckDBParameter { Value = id });
             cmd.ExecuteNonQuery();
         }
+        finally { _writeLock.Release(); }
     }
 
     /// <summary>
     /// Deletes a memory entry by ID.
     /// </summary>
     /// <param name="id">ID of the memory to delete.</param>
-    public void Delete(string id)
+    public async Task DeleteAsync(string id)
     {
-        lock (_writeLock)
+        await _writeLock.WaitAsync();
+        try
         {
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = "DELETE FROM memories WHERE id = $1";
             cmd.Parameters.Add(new DuckDBParameter { Value = id });
             cmd.ExecuteNonQuery();
         }
+        finally { _writeLock.Release(); }
     }
 
     /// <summary>
@@ -199,5 +205,9 @@ public sealed class DuckDbMemoryStore : IDisposable
     /// <summary>
     /// Disposes the DuckDB connection.
     /// </summary>
-    public void Dispose() => _connection.Dispose();
+    public void Dispose()
+    {
+        _connection.Dispose();
+        _writeLock.Dispose();
+    }
 }

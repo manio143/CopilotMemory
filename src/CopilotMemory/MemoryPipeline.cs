@@ -136,18 +136,18 @@ public class MemoryPipeline : IDisposable
                 {
                     case UpdateEvent.UPDATE:
                         var updatedEmbedding = _embedder.Embed(decision.Text);
-                        _store.Update(decision.Id, decision.Text, updatedEmbedding);
+                        await _store.UpdateAsync(decision.Id, decision.Text, updatedEmbedding);
                         Emit("update", $"Updated '{decision.Id}': {decision.Text}");
                         break;
                     case UpdateEvent.DELETE:
-                        _store.Delete(decision.Id);
+                        await _store.DeleteAsync(decision.Id);
                         Emit("delete", $"Deleted '{decision.Id}'");
                         break;
                     case UpdateEvent.ADD:
                         // Find source from the matching new fact
                         var source = factsNeedingUpdate
                             .FirstOrDefault(f => f.Fact.Text == decision.Text).Fact?.Source ?? "user";
-                        _store.Add(new MemoryEntry
+                        await _store.AddAsync(new MemoryEntry
                         {
                             Id = decision.Id,
                             Text = decision.Text,
@@ -165,7 +165,7 @@ public class MemoryPipeline : IDisposable
         foreach (var (fact, embedding, _) in newFacts)
         {
             var id = Guid.NewGuid().ToString();
-            _store.Add(new MemoryEntry
+            await _store.AddAsync(new MemoryEntry
             {
                 Id = id,
                 Text = fact.Text,
@@ -206,10 +206,10 @@ public class MemoryPipeline : IDisposable
     /// </summary>
     /// <param name="text">The fact text to store.</param>
     /// <param name="source">Source of the fact: "user" or "assistant" (default: "user").</param>
-    public void Store(string text, string source = "user")
+    public async Task StoreAsync(string text, string source = "user")
     {
         var embedding = _embedder.Embed(text);
-        _store.Add(new MemoryEntry
+        await _store.AddAsync(new MemoryEntry
         {
             Id = Guid.NewGuid().ToString(),
             Text = text,
@@ -225,11 +225,11 @@ public class MemoryPipeline : IDisposable
     /// <param name="query">Query to match memories for deletion.</param>
     /// <param name="minScore">Minimum similarity score for matches (default: 0.85).</param>
     /// <returns>Number of memories deleted.</returns>
-    public int Forget(string query, float minScore = 0.85f)
+    public async Task<int> ForgetAsync(string query, float minScore = 0.85f)
     {
         var results = Recall(query, limit: 10, minScore: minScore);
         foreach (var r in results)
-            _store.Delete(r.Id);
+            await _store.DeleteAsync(r.Id);
         Emit("forget", $"Deleted {results.Count} memories matching '{query}'");
         return results.Count;
     }

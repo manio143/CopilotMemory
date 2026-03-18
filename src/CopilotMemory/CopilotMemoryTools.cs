@@ -44,11 +44,11 @@ public class CopilotMemoryTools
         MemoryForget, "memory_forget",
         "Delete memories matching a query. Use when the user says 'forget this' or 'that's no longer true'.");
 
-    private string MemoryStore(
+    private async Task<string> MemoryStore(
         [Description("The fact or preference to remember")] string text,
         [Description("Who stated this: 'user' or 'assistant'")] string source = "user")
     {
-        _pipeline.Store(text, source);
+        await _pipeline.StoreAsync(text, source);
         return $"Stored: {text}";
     }
 
@@ -62,10 +62,10 @@ public class CopilotMemoryTools
             $"[{r.Source}] {r.Text} (score: {r.Score:F2})"));
     }
 
-    private string MemoryForget(
+    private async Task<string> MemoryForget(
         [Description("What to forget — matches by semantic similarity")] string query)
     {
-        var deleted = _pipeline.Forget(query);
+        var deleted = await _pipeline.ForgetAsync(query);
         return $"Deleted {deleted} memories matching '{query}'.";
     }
 }
