@@ -21,13 +21,7 @@ CopilotMemory gives your GitHub Copilot agent a persistent, semantic memory syst
 
 ## Quick Start
 
-### 1. Install the package
-
-```bash
-dotnet add package CopilotMemory
-```
-
-### 2. Initialize the memory pipeline
+### 1. Initialize the memory pipeline
 
 ```csharp
 using CopilotMemory;
@@ -50,7 +44,7 @@ var pipeline = new MemoryPipeline(store, embedder, extractor, updater);
 pipeline.On(evt => Console.WriteLine($"[{evt.Step}] {evt.Detail} ({evt.DurationMs}ms)"));
 ```
 
-### 3. Integrate with Copilot SDK
+### 2. Integrate with Copilot SDK
 
 ```csharp
 // Create Copilot client
