@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CopilotMemory/CopilotMemory.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CopilotMemory.IntegrationTests/CopilotMemory.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,13 @@
+# .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# Test results
+test-results/
+
+# DuckDB files
+*.duckdb
+*.duckdb.wal

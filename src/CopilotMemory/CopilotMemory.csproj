@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="CopilotMemory.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DuckDB.NET.Data.Full" Version="1.5.0" />
+    <PackageReference Include="ElBruno.LocalEmbeddings" Version="1.1.5" />
+    <PackageReference Include="GitHub.Copilot.SDK" Version="0.1.32" />
+  </ItemGroup>
+
+</Project>
