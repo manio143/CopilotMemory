@@ -22,6 +22,7 @@ namespace CopilotMemory;
 public class CopilotMemoryHooks
 {
     private readonly MemoryPipeline _pipeline;
+    private readonly int _recallLimit;
     private readonly StringBuilder _assistantBuffer = new();
     private string? _lastUserPrompt;
 
@@ -29,9 +30,11 @@ public class CopilotMemoryHooks
     /// Creates a new hooks instance wrapping the given memory pipeline.
     /// </summary>
     /// <param name="pipeline">The memory pipeline to use for recall and capture.</param>
-    public CopilotMemoryHooks(MemoryPipeline pipeline)
+    /// <param name="recallLimit">Maximum number of memories to inject on each prompt (default: 5).</param>
+    public CopilotMemoryHooks(MemoryPipeline pipeline, int recallLimit = 5)
     {
         _pipeline = pipeline;
+        _recallLimit = recallLimit;
     }
 
     /// <summary>
@@ -64,7 +67,7 @@ public class CopilotMemoryHooks
         {
             _lastUserPrompt = input.Prompt;
 
-            var recalled = _pipeline.RecallFormatted(input.Prompt);
+            var recalled = _pipeline.RecallFormatted(input.Prompt, _recallLimit);
 
             if (string.IsNullOrWhiteSpace(recalled) || recalled.Contains("No relevant memories"))
                 return null;
