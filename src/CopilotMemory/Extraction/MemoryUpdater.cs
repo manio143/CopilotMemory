@@ -2,15 +2,30 @@ using System.Text.Json;
 
 namespace CopilotMemory.Extraction;
 
-internal class MemoryUpdater
+/// <summary>
+/// Decides how to handle new facts against existing memories (ADD/UPDATE/DELETE/NONE).
+/// Uses LLM to make intelligent deduplication decisions.
+/// </summary>
+public class MemoryUpdater
 {
     private readonly ILlmClient _llm;
 
+    /// <summary>
+    /// Creates a new memory updater with the specified LLM client.
+    /// </summary>
+    /// <param name="llm">LLM client for update decisions.</param>
     public MemoryUpdater(ILlmClient llm)
     {
         _llm = llm;
     }
 
+    /// <summary>
+    /// Decides what to do with new facts given existing memories.
+    /// Returns a list of update decisions (ADD/UPDATE/DELETE/NONE) for each fact.
+    /// </summary>
+    /// <param name="existingMemories">Existing memory entries (ID and text).</param>
+    /// <param name="newFacts">New facts to compare against existing memories.</param>
+    /// <returns>List of update decisions for each fact/memory pair.</returns>
     public async Task<List<UpdateDecision>> DecideAsync(
         IEnumerable<(string Id, string Text)> existingMemories,
         IEnumerable<string> newFacts)

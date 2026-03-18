@@ -2,11 +2,19 @@ using DuckDB.NET.Data;
 
 namespace CopilotMemory.Store;
 
-internal sealed class DuckDbMemoryStore : IDisposable
+/// <summary>
+/// DuckDB-based vector store for memory entries with cosine similarity search.
+/// Stores text, embeddings (FLOAT[384]), and metadata in an embedded analytical database.
+/// </summary>
+public sealed class DuckDbMemoryStore : IDisposable
 {
     private readonly DuckDBConnection _connection;
     private readonly object _writeLock = new();
 
+    /// <summary>
+    /// Creates a new DuckDB memory store at the specified path.
+    /// </summary>
+    /// <param name="dbPath">Path to the DuckDB database file.</param>
     public DuckDbMemoryStore(string dbPath)
     {
         _connection = new DuckDBConnection($"Data Source={dbPath}");
@@ -31,6 +39,10 @@ internal sealed class DuckDbMemoryStore : IDisposable
         cmd.ExecuteNonQuery();
     }
 
+    /// <summary>
+    /// Adds a new memory entry to the store.
+    /// </summary>
+    /// <param name="entry">Memory entry to add.</param>
     public void Add(MemoryEntry entry)
     {
         lock (_writeLock)
@@ -51,6 +63,12 @@ internal sealed class DuckDbMemoryStore : IDisposable
         }
     }
 
+    /// <summary>
+    /// Updates an existing memory entry with new text and embedding.
+    /// </summary>
+    /// <param name="id">ID of the memory to update.</param>
+    /// <param name="newText">New text content.</param>
+    /// <param name="newEmbedding">New embedding vector.</param>
     public void Update(string id, string newText, float[] newEmbedding)
     {
         lock (_writeLock)
@@ -68,6 +86,10 @@ internal sealed class DuckDbMemoryStore : IDisposable
         }
     }
 
+    /// <summary>
+    /// Deletes a memory entry by ID.
+    /// </summary>
+    /// <param name="id">ID of the memory to delete.</param>
     public void Delete(string id)
     {
         lock (_writeLock)
@@ -79,6 +101,13 @@ internal sealed class DuckDbMemoryStore : IDisposable
         }
     }
 
+    /// <summary>
+    /// Searches for memories similar to the query embedding.
+    /// </summary>
+    /// <param name="queryEmbedding">Query embedding vector.</param>
+    /// <param name="limit">Maximum number of results (default: 5).</param>
+    /// <param name="minScore">Minimum cosine similarity score (default: 0.3).</param>
+    /// <returns>List of matching search results, ordered by similarity score.</returns>
     public List<SearchResult> Search(float[] queryEmbedding, int limit = 5, float minScore = 0.3f)
     {
         using var cmd = _connection.CreateCommand();
@@ -110,11 +139,21 @@ internal sealed class DuckDbMemoryStore : IDisposable
         return results;
     }
 
+    /// <summary>
+    /// Finds memories similar to the given embedding (used for deduplication).
+    /// </summary>
+    /// <param name="embedding">Embedding vector to match against.</param>
+    /// <param name="threshold">Minimum similarity threshold (default: 0.95).</param>
+    /// <returns>List of similar search results.</returns>
     public List<SearchResult> FindSimilar(float[] embedding, float threshold = 0.95f)
     {
         return Search(embedding, limit: 5, minScore: threshold);
     }
 
+    /// <summary>
+    /// Gets all memory entries from the store (without embeddings for efficiency).
+    /// </summary>
+    /// <returns>List of all memory entries.</returns>
     public List<MemoryEntry> GetAll()
     {
         using var cmd = _connection.CreateCommand();
@@ -138,6 +177,10 @@ internal sealed class DuckDbMemoryStore : IDisposable
         return results;
     }
 
+    /// <summary>
+    /// Gets statistics about the memory store (count, oldest, newest).
+    /// </summary>
+    /// <returns>Memory statistics.</returns>
     public MemoryStats GetStats()
     {
         using var cmd = _connection.CreateCommand();
@@ -153,5 +196,8 @@ internal sealed class DuckDbMemoryStore : IDisposable
         };
     }
 
+    /// <summary>
+    /// Disposes the DuckDB connection.
+    /// </summary>
     public void Dispose() => _connection.Dispose();
 }

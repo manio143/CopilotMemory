@@ -2,15 +2,28 @@ using System.Text.Json;
 
 namespace CopilotMemory.Extraction;
 
-internal class FactExtractor
+/// <summary>
+/// Extracts facts from conversations using LLM prompts.
+/// Separate methods for user facts and assistant facts.
+/// </summary>
+public class FactExtractor
 {
     private readonly ILlmClient _llm;
 
+    /// <summary>
+    /// Creates a new fact extractor with the specified LLM client.
+    /// </summary>
+    /// <param name="llm">LLM client for fact extraction.</param>
     public FactExtractor(ILlmClient llm)
     {
         _llm = llm;
     }
 
+    /// <summary>
+    /// Extracts facts from the user's messages in a conversation.
+    /// </summary>
+    /// <param name="conversation">Full conversation text (user and assistant messages).</param>
+    /// <returns>List of extracted facts attributed to the user.</returns>
     public async Task<List<Fact>> ExtractUserFactsAsync(string conversation)
     {
         var systemPrompt = Prompts.UserFactExtraction(DateTime.UtcNow);
@@ -18,6 +31,11 @@ internal class FactExtractor
         return ParseFacts(response, "user");
     }
 
+    /// <summary>
+    /// Extracts facts from the assistant's messages in a conversation.
+    /// </summary>
+    /// <param name="conversation">Full conversation text (user and assistant messages).</param>
+    /// <returns>List of extracted facts attributed to the assistant.</returns>
     public async Task<List<Fact>> ExtractAssistantFactsAsync(string conversation)
     {
         var systemPrompt = Prompts.AssistantFactExtraction(DateTime.UtcNow);
