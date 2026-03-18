@@ -77,16 +77,13 @@ public class MemoryPipeline : IDisposable
     {
         var conversation = $"user: {userMessage}\nassistant: {assistantMessage}";
 
-        // Step 1: Extract facts (parallel)
+        // Step 1: Extract facts (single combined call)
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var userFactsTask = _extractor.ExtractUserFactsAsync(conversation);
-        var assistantFactsTask = _extractor.ExtractAssistantFactsAsync(conversation);
-        await Task.WhenAll(userFactsTask, assistantFactsTask);
+        var allFacts = await _extractor.ExtractFactsAsync(conversation);
         sw.Stop();
 
-        var userFacts = userFactsTask.Result;
-        var assistantFacts = assistantFactsTask.Result;
-        var allFacts = userFacts.Concat(assistantFacts).ToList();
+        var userFacts = allFacts.Where(f => f.Source == "user").ToList();
+        var assistantFacts = allFacts.Where(f => f.Source == "assistant").ToList();
 
         Emit("extract", $"Extracted {allFacts.Count} facts ({userFacts.Count} user, {assistantFacts.Count} assistant)", sw.ElapsedMilliseconds);
 
