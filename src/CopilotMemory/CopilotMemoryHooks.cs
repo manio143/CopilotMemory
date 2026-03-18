@@ -4,12 +4,18 @@ using GitHub.Copilot.SDK;
 namespace CopilotMemory;
 
 /// <summary>
-/// Provides Copilot SDK hooks that wire up memory recall and capture.
+/// Provides Copilot SDK hooks for memory recall and capture.
+/// Each hook is exposed as a separate property so consumers can pick which ones to include.
 /// Usage:
 ///   var hooks = new CopilotMemoryHooks(pipeline);
 ///   var session = await client.CreateSessionAsync(new SessionConfig
 ///   {
-///       Hooks = hooks.CreateHooks(),
+///       Hooks = new SessionHooks
+///       {
+///           OnSessionStart = hooks.SessionStart,
+///           OnUserPromptSubmitted = hooks.UserPromptSubmitted,
+///       },
+///       Tools = tools.All,
 ///   });
 ///   hooks.AttachCapture(session);
 /// </summary>
@@ -19,24 +25,62 @@ public class CopilotMemoryHooks
     private readonly StringBuilder _assistantBuffer = new();
     private string? _lastUserPrompt;
 
+    /// <summary>
+    /// Creates a new hooks instance wrapping the given memory pipeline.
+    /// </summary>
+    /// <param name="pipeline">The memory pipeline to use for recall and capture.</param>
     public CopilotMemoryHooks(MemoryPipeline pipeline)
     {
         _pipeline = pipeline;
     }
 
     /// <summary>
-    /// Creates a SessionHooks object to pass into SessionConfig.Hooks.
+    /// All hooks as a pre-built SessionHooks object. Convenience shorthand for:
+    /// <code>new SessionHooks { OnSessionStart = hooks.SessionStart, OnUserPromptSubmitted = hooks.UserPromptSubmitted }</code>
     /// </summary>
-    public SessionHooks CreateHooks() => new()
+    public SessionHooks All => new()
     {
-        OnSessionStart = OnSessionStart,
-        OnUserPromptSubmitted = OnUserPromptSubmitted,
+        OnSessionStart = SessionStart,
+        OnUserPromptSubmitted = UserPromptSubmitted,
     };
 
     /// <summary>
-    /// Attach to a session to capture assistant messages via events.
-    /// Call this after CreateSessionAsync.
+    /// Warms up the embedding model on session start (non-blocking).
+    /// Assign to <c>SessionHooks.OnSessionStart</c>.
     /// </summary>
+    public SessionStartHandler SessionStart =>
+        async (input, invocation) =>
+        {
+            _ = Task.Run(() => _pipeline.WarmUp());
+            return null;
+        };
+
+    /// <summary>
+    /// Recalls relevant memories and injects them as additional context when the user submits a prompt.
+    /// Assign to <c>SessionHooks.OnUserPromptSubmitted</c>.
+    /// </summary>
+    public UserPromptSubmittedHandler UserPromptSubmitted =>
+        async (input, invocation) =>
+        {
+            _lastUserPrompt = input.Prompt;
+
+            var recalled = _pipeline.RecallFormatted(input.Prompt);
+
+            if (string.IsNullOrWhiteSpace(recalled) || recalled.Contains("No relevant memories"))
+                return null;
+
+            return new UserPromptSubmittedHookOutput
+            {
+                AdditionalContext = recalled,
+            };
+        };
+
+    /// <summary>
+    /// Attach to a session to capture assistant messages and trigger memory extraction
+    /// at the end of each assistant turn. Call this after CreateSessionAsync.
+    /// </summary>
+    /// <param name="session">The Copilot session to observe.</param>
+    /// <returns>A disposable subscription. Dispose to stop capturing.</returns>
     public IDisposable AttachCapture(CopilotSession session)
     {
         return session.On(evt =>
@@ -69,29 +113,5 @@ public class CopilotMemoryHooks
                     break;
             }
         });
-    }
-
-    private async Task<SessionStartHookOutput?> OnSessionStart(
-        SessionStartHookInput input, HookInvocation invocation)
-    {
-        // Warm up async — don't block session start
-        _ = Task.Run(() => _pipeline.WarmUp());
-        return null;
-    }
-
-    private async Task<UserPromptSubmittedHookOutput?> OnUserPromptSubmitted(
-        UserPromptSubmittedHookInput input, HookInvocation invocation)
-    {
-        _lastUserPrompt = input.Prompt;
-
-        var recalled = _pipeline.RecallFormatted(input.Prompt);
-
-        if (string.IsNullOrWhiteSpace(recalled) || recalled.Contains("No relevant memories"))
-            return null;
-
-        return new UserPromptSubmittedHookOutput
-        {
-            AdditionalContext = recalled,
-        };
     }
 }
