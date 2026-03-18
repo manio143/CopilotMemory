@@ -51,11 +51,11 @@ public sealed class SdkLlmClient : ILlmClient, IAsyncDisposable
         await using var session = await _client.CreateSessionAsync(new SessionConfig
         {
             Model = _model,
-            SystemMessage = new SystemMessageConfig { Content = systemPrompt },
+            SystemMessage = new SystemMessageConfig { Content = systemPrompt, Mode = SystemMessageMode.Replace },
             ExcludedTools = ["bash", "edit", "write", "read_file", "glob", "grep",
                 "view", "list_dir", "file_search", "create_file", "delete_file",
                 "replace", "insert", "undo_edit"],
-            OnPermissionRequest = PermissionHandler.ApproveAll,
+            OnPermissionRequest = (_, _) => Task.FromResult(new PermissionRequestResult { Kind = PermissionRequestResultKind.DeniedByRules }),
         });
 
         var response = await session.SendAndWaitAsync(new MessageOptions
